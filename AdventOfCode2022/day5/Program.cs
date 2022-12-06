@@ -48,11 +48,17 @@ for (var i = boxHeight + 2; i < lines.Length; i++)
     // get items to move
     var tmp = itemArray[from - 1].Take(qty).ToList();
     
+    
     // add to new stack
+    
+    // step1
     foreach (var item in tmp)
     {
         itemArray[to - 1].Insert(0, item);
     }
+    
+    // step2
+    //itemArray[to - 1].InsertRange(0,tmp);
     
     // remove from src
     itemArray[from - 1].RemoveRange(0,qty);
