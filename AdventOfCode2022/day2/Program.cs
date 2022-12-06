@@ -2,7 +2,7 @@
 {
     private static void Main(string[] args)
     {
-        string filePath = @"./input.txt";
+        const string filePath = @"./input.txt";
 
         if (!File.Exists(filePath))
         {
@@ -28,8 +28,9 @@
             { 'Y', 'B' },
             { 'Z', 'C' }
         };
-        int shift = 65;
+        const int shift = 65;
         int[,] pointArray = new int[,] { { 3, 0, 6 }, { 6, 3, 0 }, { 0, 6, 3 } };
+        int[,] desiredMoveArray = new int[,] { { 2, 0, 1 }, { 0, 1, 2 }, { 1, 2, 0 }};
         int scoreSumSimple = 0;
         int scoreSumAdv = 0;
 
@@ -38,10 +39,16 @@
             var opponent = (int)lin[0] - shift;
             var player = (int)moveDictionary[lin[2]] - shift;
 
+            // simple way
             var moveScore = scoringDictionary[player];
             var outcomeScore = pointArray[player, opponent];
-
-            scoreSumSimple += moveScore += outcomeScore;
+            scoreSumSimple += moveScore + outcomeScore;
+            
+            // advanced way
+            var desiredMove = desiredMoveArray[opponent, player]; // 0/1/2
+            var advMoveScore = scoringDictionary[desiredMove];
+            var advOutcomeScore = pointArray[desiredMove, opponent];
+            scoreSumAdv += advMoveScore + advOutcomeScore;
         }
 
         Console.WriteLine($"Simple:{scoreSumSimple}");
