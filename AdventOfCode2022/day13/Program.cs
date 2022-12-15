@@ -10,83 +10,78 @@
             return;
         }
 
-        var lines = File.ReadLines(filePath);
+        var lines = File.ReadAllText(filePath);
 
-        var packetPairList = new List<PacketPair>();
-        Packet? tempPacket = null;
+        string[] pairs = lines.Split("\n\n");
+
+        List<List<object>> allPacketList = new List<List<object>>();
         
-        foreach (var line in lines)
+        int count = 0;
+        for (var index = 0; index < pairs.Length; index++)
         {
-            if (line.Length > 0)
-            {
-                var newPacket = new Packet(line);
-                if (tempPacket != null)
-                {
-                    packetPairList.Add(new PacketPair()
-                    {
-                        FirstPacket = tempPacket,
-                        SecondPacket = newPacket
-                    });
-                    tempPacket = null;
-                }
-                else
-                {
-                    tempPacket = newPacket;
-                }
-            }
-        }
+            var pair = pairs[index];
+            var packets = pair.Split("\n");
 
-        var indexSum = 0;
-        for (var index = 0; index < packetPairList.Count; index++)
-        {
+            var pair0 = Packet.ParsePacket(packets[0]);
+            var pair1 = Packet.ParsePacket(packets[1]);
+        
+            allPacketList.Add(pair0);
+            allPacketList.Add(pair1);
             
-            var packetPair = packetPairList[index];
-            var a = Packet.ComparePackets(packetPair.FirstPacket, packetPair.SecondPacket);
-            if (a == 1)
+            if (Packet.ComparePackets(pair0, pair1) <= 0)
             {
-                indexSum += index+1;
-                Console.WriteLine($"{index}");
+                count += index+1;
+                Console.WriteLine(index+1);
             }
         }
-        Console.WriteLine($"Sum: {indexSum}");
-    }
-    class PacketPair
-    {
-        public Packet FirstPacket;
-        public Packet SecondPacket;
-    }
+    
+        Console.WriteLine($"Sum: {count}");
 
+        var dividerPacket1 = Packet.ParsePacket("[[2]]");
+        var dividerPacket2 = Packet.ParsePacket("[[6]]");
+        
+        allPacketList.Add(dividerPacket1);
+        allPacketList.Add(dividerPacket1);
+        
+        var sorted = BubbleSort(allPacketList.ToArray());
+        static List<object>[] BubbleSort(List<object>[] arr)
+        {
+            int n = arr.Length;
+            for (int i = 0; i < n - 1; i++)
+            for (int j = 0; j < n - i - 1; j++)
+                if (Packet.ComparePackets(arr[j], arr[j+1]) > 0)
+                {
+                    // swap temp and arr[i]
+                    (arr[j], arr[j + 1]) = (arr[j + 1], arr[j]);
+                }
+
+            return arr;
+        }
+
+        int multiplier = 1;
+        for (var index = 0; index < sorted.Length; index++)
+        {
+            var item = sorted[index];
+            if (item == dividerPacket1 || item == dividerPacket2)
+            {
+                multiplier *= (index+1);
+            }
+        }
+        Console.WriteLine($"Multiplier: {multiplier}");
+    }
+    
     class Packet
     {
-        public Packet(string data)
+        public static List<object> ParsePacket(string text)
         {
-            ParsePacket(data);
-            Data = data;
-        }
-
-        public readonly string Data;
-
-        private List<int> Integers { get; set; } = new List<int>();
-        private List<Packet> ChildPackets { get; set; } = new List<Packet>();
-
-        private readonly Dictionary<int, (EPacketElementType, int)> _orderDictionary = new();
-
-        public int LengthOverall => Integers.Count + ChildPackets.Count;
-        
-        public void ParsePacket(string text)
-        {
-            var cnt = 0;
-            
-
             if (text[0] == '[' && text[^1] == ']')
             {
                 text = text[1..^1];
             }
-            
-            List<int> integers = new List<int>();
-            List<string> lists = new();
+
+            var tempObjectList = new List<object>();
         
-            List<char> tempCharList = new List<char>();
+            var tempCharList = new List<char>();
 
             var insideBracketCount = 0;
             for (var index = 0; index < text.Length; index++)
@@ -128,187 +123,56 @@
 
             void AddInt(int integer)
             {
-                integers.Add(integer);
-                _orderDictionary.Add(cnt, (EPacketElementType.Int, integers.Count - 1));
-                cnt += 1;
+                tempObjectList.Add(integer);
             }
 
             void AddToList(string txt)
             {
-                lists.Add(txt);
-                _orderDictionary.Add(cnt, (EPacketElementType.List, lists.Count - 1));
-                cnt += 1;
+                var temp = ParsePacket(txt);
+                tempObjectList.Add(temp);
             }
+
+            return tempObjectList;
+        }
+
+        public static int ComparePackets(List<object> FirstPacket, List<object> SecondPacket)
+        {
+            var iterationLength = Math.Min(FirstPacket.Count, SecondPacket.Count);
             
-            Integers = integers;
-            ChildPackets = lists.Select(x=>new Packet(x)).ToList();
-        }
-
-        public static int ComparePackets(Packet FirstPacket, Packet SecondPacket)
-        {
-            //Console.WriteLine($"Comparing {FirstPacket.Data} vs {SecondPacket.Data}");
-            foreach (var pair in FirstPacket._orderDictionary)
+            for (int i = 0; i < iterationLength; i++)
             {
-                var index = pair.Key;
+                object objectFirst = FirstPacket[i];
+                object objectSecond = SecondPacket[i];
                 
-                (EPacketElementType firstElementType, var firstTypeIndex) = pair.Value;
-                
-                // try to get item from the other packet
-                if (true)//SecondPacket._orderDictionary.ContainsKey(index)
+                var result = CompareObjects(objectFirst, objectSecond);
+                if (result < 0)
                 {
-                    (EPacketElementType secondElementType, var secondTypeIndex) = SecondPacket._orderDictionary[index];
-                    
-                    // if both values are ints
-                    if (firstElementType == EPacketElementType.Int && secondElementType == EPacketElementType.Int)
-                    {
-                        //Console.WriteLine($"Comparing {FirstPacket.Integers[firstTypeIndex]} vs {SecondPacket.Integers[secondTypeIndex]}");
-                        if (FirstPacket.Integers[firstTypeIndex] < SecondPacket.Integers[secondTypeIndex])
-                        {
-                            //Console.WriteLine("Left side smaller - OK");
-                            return 1;
-                        }
-                        
-                        if (FirstPacket.Integers[firstTypeIndex] > SecondPacket.Integers[secondTypeIndex])
-                        {
-                            //Console.WriteLine("Right side smaller - BAD");
-                            return -1;
-                        }
-                    }
-
-                    else
-                    {
-                        var tempFirstPacket = firstElementType == EPacketElementType.Int ?
-                                              new Packet(FirstPacket.Integers[firstTypeIndex].ToString()) : FirstPacket;
-                        
-                        var tempSecondPacket = secondElementType == EPacketElementType.Int ?
-                            new Packet(SecondPacket.Integers[secondTypeIndex].ToString()) : SecondPacket;
-
-                        var retVal = ComparePackets(tempFirstPacket, tempSecondPacket);
-                        if (retVal != 0)
-                            return retVal;
-
-                        if (tempFirstPacket.LengthOverall < tempSecondPacket.LengthOverall)
-                            return 1;
-                        if (tempFirstPacket.LengthOverall > tempSecondPacket.LengthOverall)
-                            return -1;
-                        return 0;
-                    }
-                    
-                    // // if both values are packets
-                    // else if (firstElementType == EPacketElementType.List && secondElementType == EPacketElementType.List)
-                    // {
-                    //     var retVal = ComparePackets(FirstPacket.ChildPackets[firstTypeIndex],
-                    //         SecondPacket.ChildPackets[secondTypeIndex]);
-                    //     
-                    //     if(retVal != 0)
-                    //         return retVal;
-                    // }
-                    //
-                    // // if conversion is needed
-                    // else if(firstElementType != secondElementType)
-                    // {
-                    //     if (firstElementType == EPacketElementType.Int)
-                    //     {
-                    //         Packet tempFirstPacket = new Packet(FirstPacket.Integers[firstTypeIndex].ToString());
-                    //         var retVal = ComparePackets(tempFirstPacket, SecondPacket.ChildPackets[secondTypeIndex]);
-                    //         if (retVal != 0)
-                    //         {
-                    //             return retVal;
-                    //         }
-                    //     }
-                    //     
-                    //     if (secondElementType == EPacketElementType.Int)
-                    //     {
-                    //         Packet tempSecondPacket = new Packet(SecondPacket.Integers[secondTypeIndex].ToString());
-                    //         var retVal = ComparePackets(FirstPacket.ChildPackets[firstTypeIndex], tempSecondPacket);
-                    //         if (retVal != 0)
-                    //         {
-                    //             return retVal;
-                    //         }
-                    //     }
-                    // }
+                    return -1;
                 }
-                // else
-                // {
-                //     //Console.WriteLine("Right side run out of items");
-                //     return -1; // right side run out of items, inputs not in right order
-                // }
-                    
+
+                if (result > 0)
+                {
+                    return 1;
+                }
             }
 
-            return 0;
-            // if (FirstPacket.ChildPackets.Count == 0 && SecondPacket.ChildPackets.Count == 0 &&
-            //     FirstPacket.Integers.Count > 0 && SecondPacket.Integers.Count > 0)
-            // {
-            //     //Console.WriteLine("Elements equal");
-            //     return 0;
-            // }
-            //
-            // if (FirstPacket.ChildPackets.Count == 0 && SecondPacket.ChildPackets.Count == 0 &&
-            //     FirstPacket.Integers.Count == 0 && SecondPacket.Integers.Count == 0)
-            // {
-            //     //Console.WriteLine("Elements equal");
-            //     return 0;
-            // }
-            //
-            // else 
-            // {
-            //     //Console.WriteLine("Left side run out of items");
-            //     return 1;
-            // }
+            return Math.Sign(FirstPacket.Count - SecondPacket.Count);
+        }
+
+        public static int CompareObjects(object FirstObject, object SecondObject)
+        {
+            var result = 0;
+            return (FirstObject, SecondObject) switch
+            {
+                (int x, int y) => Math.Sign(x - y),
+                (List<object> x, List<object> y) => ComparePackets(x, y),
+                (List<object> x, int y) => ComparePackets(x, new List<object> { y }),
+                (int x, List<object> y) => ComparePackets(new List<object> { x }, y),
+                _ => result
+            };
         }
     }
-
-
-    public static void ParsePacket(string text, out List<int> intList, out List<string> stringList)
-    {
-        var rawDataWithoutBraces = text[1..^1];
-        List<int> integers = new List<int>();
-        List<string> lists = new();
-        
-        List<char> tempCharList = new List<char>();
-
-        var insideBracketCount = 0;
-        for (var index = 0; index < rawDataWithoutBraces.Length; index++)
-        {
-            var character = rawDataWithoutBraces[index];
-            if ((character == ',') && insideBracketCount == 0 && tempCharList.Count > 0)
-            {
-                var integer = int.Parse(string.Join("", tempCharList));
-                integers.Add(integer);
-                tempCharList.Clear();
-            }
-            else if (character == '[')
-            {
-                insideBracketCount += 1;
-            }
-            else if (character == ']')
-            {
-                insideBracketCount -= 1;
-
-                if (insideBracketCount == 0 && tempCharList.Any())
-                {
-                    lists.Add(string.Join("", tempCharList));
-                    tempCharList.Clear();
-                }
-            }
-            else if (!(insideBracketCount == 0 && character == ','))
-            {
-                tempCharList.Add(character);
-                if (index == rawDataWithoutBraces.Length - 1)
-                {
-                    var integer = int.Parse(string.Join("", tempCharList));
-                    integers.Add(integer);
-                    tempCharList.Clear();
-                }
-            }
-        }
-
-        intList = integers;
-        stringList = lists;
-
-    }
-        
+    
     enum EPacketElementType
     {
         List,
