@@ -41,7 +41,7 @@
         var dividerPacket2 = Packet.ParsePacket("[[6]]");
         
         allPacketList.Add(dividerPacket1);
-        allPacketList.Add(dividerPacket1);
+        allPacketList.Add(dividerPacket2);
         
         var sorted = BubbleSort(allPacketList.ToArray());
         static List<object>[] BubbleSort(List<object>[] arr)
